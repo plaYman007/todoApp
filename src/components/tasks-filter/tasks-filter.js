@@ -1,6 +1,6 @@
-import React from 'react'
-import { PropTypes } from 'prop-types'
-import './tasks-filter.css'
+import React from 'react';
+import { PropTypes } from 'prop-types';
+import './tasks-filter.css';
 
 function TasksFilter({ currentFilter, handleFilterChange }) {
   return (
@@ -17,12 +17,12 @@ function TasksFilter({ currentFilter, handleFilterChange }) {
         </li>
       ))}
     </ul>
-  )
+  );
 }
 
 TasksFilter.propTypes = {
   currentFilter: PropTypes.oneOf(['All', 'Active', 'Completed']).isRequired,
   handleFilterChange: PropTypes.func.isRequired,
-}
+};
 
-export default TasksFilter
+export default TasksFilter;

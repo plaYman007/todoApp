@@ -1,8 +1,8 @@
-import { PropTypes } from 'prop-types'
-import React from 'react'
+import { PropTypes } from 'prop-types';
+import React from 'react';
 
-import TasksFilter from '../tasks-filter'
-import './footer.css'
+import TasksFilter from '../tasks-filter';
+import './footer.css';
 
 function Footer({ todo, currentFilter, handleFilterChange, handleClearCompleted }) {
   return (
@@ -16,7 +16,7 @@ function Footer({ todo, currentFilter, handleFilterChange, handleClearCompleted 
         Clear completed
       </button>
     </footer>
-  )
+  );
 }
 
 Footer.propTypes = {
@@ -24,6 +24,6 @@ Footer.propTypes = {
   currentFilter: PropTypes.oneOf(['All', 'Active', 'Completed']).isRequired,
   handleFilterChange: PropTypes.func.isRequired,
   handleClearCompleted: PropTypes.func.isRequired,
-}
+};
 
-export default Footer
+export default Footer;
