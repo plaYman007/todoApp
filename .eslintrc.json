@@ -23,6 +23,8 @@
     "linebreak-style": "off",
     "quotes": ["error", "single"],
     "semi": "off",
+    "jsx-a11y/control-has-associated-label": "off",
+    "jsx-a11y/label-has-associated-control": "off",
     "react/react-in-jsx-scope": "off",
     "react/prop-types": 0,
     "import/no-unresolved": [2, { "caseSensitive": false }],
