@@ -142,14 +142,7 @@ export default class Task extends React.Component {
       </>
     );
 
-    const formattedTimeRemaining = new Date(
-      0,
-      0,
-      0,
-      0,
-      0,
-      task.timeRemaining
-    );
+    const formattedTimeRemaining = new Date(0, 0, 0, 0, 0, task.timeRemaining);
 
     const formattedDuration = formatDuration({
       minutes: formattedTimeRemaining.getMinutes(),
