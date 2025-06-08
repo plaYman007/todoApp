@@ -10,9 +10,8 @@ import TaskValidator from '../../utils/validation';
 const CREATION_TIME_UPDATE_INTERVAL = 10000;
 
 export default class Task extends React.Component {
-  #creationTimeUpdateInterval = null; // таймер ререндеринга времени создания
-
-  #taskCreatedTime = 0; // время создания задачи
+  #creationTimeUpdateInterval = null;
+  #taskCreatedTime = 0;
 
   #actions = {
     setEditModeTo: (setTo) => this.setState({ isEditing: setTo }),
@@ -30,17 +29,21 @@ export default class Task extends React.Component {
         case 'Escape':
           this.#actions.setEditModeTo(false);
           break;
-        case 'Enter':
-          {
-            const { tasksTitles } = this.props;
-            const { error } = TaskValidator.validateTask(target.value, 0, 0, tasksTitles);
-            if (error) {
-              alert(error);
-              return;
-            }
+        case 'Enter': {
+          const { tasksTitles } = this.props;
+          const { error } = TaskValidator.validateTask(
+            target.value,
+            0,
+            0,
+            tasksTitles
+          );
+          if (error) {
+            alert(error);
+            return;
           }
           this.#actions.editTask({ title: target.value });
           break;
+        }
         default:
           break;
       }
@@ -48,7 +51,11 @@ export default class Task extends React.Component {
     handleToggleCompleted: () => {
       const { task } = this.props;
       clearInterval(task.interval);
-      this.#actions.editTask({ completed: !task.completed, timeRemaining: 0, interval: null });
+      this.#actions.editTask({
+        completed: !task.completed,
+        timeRemaining: 0,
+        interval: null,
+      });
     },
     handleEditClick: () => {
       const { task } = this.props;
@@ -69,18 +76,16 @@ export default class Task extends React.Component {
     super(props);
     this.#taskCreatedTime = props.task.created;
     this.state = {
-      isEditing: false, // режим редактирования
-      createdFormattedDate: formatDistanceToNow(this.#taskCreatedTime), // форматированное время создания
+      isEditing: false,
+      createdFormattedDate: formatDistanceToNow(this.#taskCreatedTime),
     };
   }
 
   componentDidMount() {
-    this.#creationTimeUpdateInterval = setInterval(this.updateCreationTime, CREATION_TIME_UPDATE_INTERVAL);
-    // const {
-    //   task: { title },
-    // } = this.props;
-    // const timeRemaining = sessionStorage.getItem(title);
-    // if (timeRemaining) this.setState({ timeRemaining });
+    this.#creationTimeUpdateInterval = setInterval(
+      this.updateCreationTime,
+      CREATION_TIME_UPDATE_INTERVAL
+    );
   }
 
   componentDidUpdate(prevProps) {
@@ -93,27 +98,23 @@ export default class Task extends React.Component {
   }
 
   componentWillUnmount() {
-    // const {
-    //   task: { title },
-    // } = this.props;
-    // sessionStorage.removeItem(title);
-    // clearInterval(this.#timerUpdateInterval);
     clearInterval(this.#creationTimeUpdateInterval);
   }
 
-  // коллбэк для интервала; обновление времени создания
   updateCreationTime = () => {
-    this.setState({ createdFormattedDate: formatDistanceToNow(this.#taskCreatedTime) });
+    this.setState({
+      createdFormattedDate: formatDistanceToNow(this.#taskCreatedTime),
+    });
   };
 
   render() {
     const { task, onTaskStart, onTaskStop } = this.props;
     const { createdFormattedDate, isEditing } = this.state;
     const {
-      handleTitleChanged, // обработчик изменения заголовка
-      handleToggleCompleted, // обработчик изменения статуса задачи
-      handleEditClick, // обработчик редактирования задачи
-      handleDeleteClick, // обработчик удаления задачи
+      handleTitleChanged,
+      handleToggleCompleted,
+      handleEditClick,
+      handleDeleteClick,
     } = this.#handlers;
 
     const editTaskInput = (
@@ -128,12 +129,27 @@ export default class Task extends React.Component {
 
     const timerControls = (
       <>
-        <button type="button" className="icon icon-play" onClick={() => onTaskStart(task)} />
-        <button type="button" className="icon icon-pause" onClick={() => onTaskStop(task)} />
+        <button
+          type="button"
+          className="icon icon-play"
+          onClick={() => onTaskStart(task)}
+        />
+        <button
+          type="button"
+          className="icon icon-pause"
+          onClick={() => onTaskStop(task)}
+        />
       </>
     );
 
-    const formattedTimeRemaining = new Date(0, 0, 0, 0, 0, task.timeRemaining);
+    const formattedTimeRemaining = new Date(
+      0,
+      0,
+      0,
+      0,
+      0,
+      task.timeRemaining
+    );
 
     const formattedDuration = formatDuration({
       minutes: formattedTimeRemaining.getMinutes(),
@@ -141,23 +157,42 @@ export default class Task extends React.Component {
     });
 
     return (
-      <li className={(task.completed ? 'completed' : null) || (isEditing ? 'editing' : null)}>
+      <li
+        className={
+          (task.completed ? 'completed' : null) ||
+          (isEditing ? 'editing' : null)
+        }
+      >
         <div className="view">
-          <input className="toggle" type="checkbox" onChange={handleToggleCompleted} defaultChecked={task.completed} />
+          <input
+            className="toggle"
+            type="checkbox"
+            onChange={handleToggleCompleted}
+            defaultChecked={task.completed}
+          />
           <label onDoubleClick={handleEditClick} htmlFor="title">
             <span id="title" className="title">
               {task.title}
             </span>
             <span className="description">
               {formattedDuration && !task.completed && timerControls}
-              {(formattedDuration && task.completed) || formattedDuration || '0 minutes 0 seconds'}
+              {(formattedDuration && task.completed) ||
+                formattedDuration ||
+                '0 minutes 0 seconds'}
             </span>
             <span className="description">{createdFormattedDate}</span>
           </label>
-          <button type="button" className="icon icon-destroy" onClick={handleDeleteClick} />
-          <button type="button" className="icon icon-edit" onClick={handleEditClick} />
+          <button
+            type="button"
+            className="icon icon-destroy"
+            onClick={handleDeleteClick}
+          />
+          <button
+            type="button"
+            className="icon icon-edit"
+            onClick={handleEditClick}
+          />
         </div>
-        {/* Рендер поля редактирования наименования задачи если задача не завершена */}
         {isEditing && !task.completed && editTaskInput}
       </li>
     );
