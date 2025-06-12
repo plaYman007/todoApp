@@ -20,12 +20,21 @@ export default class App extends React.Component {
     delete: (tasksToDelete) => {
       const { tasks } = this.state;
       const tasksToDeleteArray = Array.isArray(tasksToDelete) ? tasksToDelete : [tasksToDelete];
+        tasksToDeleteArray.forEach(task => {
+    if (task.interval) {
+      clearInterval(task.interval);
+    }
+  });
       return tasks.filter((t) => !tasksToDeleteArray.includes(t));
     },
     start: (task) => {
+      
       const updateTask = (changedProps) => (state) => {
         const { tasks } = state;
-        const currentTitle = tasks.find((t) => t.id === task.id).title;
+        const foundTask = tasks.find((t) => t.id === task.id);
+if (!foundTask) return; 
+
+const currentTitle = foundTask.title;
         return {
           tasks: state.tasks.map((t) => (t.id === task.id ? { ...t, title: currentTitle, ...changedProps } : t)),
         };
