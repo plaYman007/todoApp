@@ -1,118 +1,133 @@
 /* eslint-disable jsx-a11y/control-has-associated-label */
 /* eslint-disable jsx-a11y/label-has-associated-control */
-
 import './task.css';
-import React from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import React, { useEffect, useState } from 'react';
+import { formatDistanceToNow, formatDuration } from 'date-fns';
 import { PropTypes } from 'prop-types';
 
-const TIME_INTERVAL = 10000;
+import TaskValidator from '../../utils/validation';
 
-export default class Task extends React.Component {
-  #updateInterval = null;
+const CREATION_TIME_UPDATE_INTERVAL = 10000;
 
-  #created = 0; // время создания задачи
+export default function Task({ task, onTaskEdit, onTaskDelete, onTaskStart, onTaskStop, tasksTitles }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [creationTimeFormatted, setCreationTimeFormatted] = useState(formatDistanceToNow(task.created));
 
-  #actions = {
-    setEditModeTo: (setTo) => this.setState({ isEditing: setTo }),
+  const handlers = {
+handleTitleChanged: ({ key, target }) => {
+  switch (key) {
+    case 'Escape':
+      setIsEditing(false);
+      break;
+    case 'Enter': {
+      const trimmedValue = target.value.trim();
+      const original = task.title.trim();
+      if (trimmedValue === original) {
+        setIsEditing(false);
+        return;
+      }
+      const filteredTitles = tasksTitles.filter(title => title.trim() !== original);
 
-    editTask: (changedProperty) => {
-      const { onTaskEdit, task } = this.props;
-      onTaskEdit({ ...task, ...changedProperty });
-      this.#actions.setEditModeTo(false);
-    },
-  };
+      const { error } = TaskValidator.validateTask(trimmedValue, 0, 0, filteredTitles, original);
 
-  #handlers = {
-    handleTitleChanged: ({ key, target }) => {
-      if (key === 'Enter') this.#actions.editTask({ title: target.value });
-    },
+      if (error) {
+        alert(error);
+        return;
+      }
 
+      onTaskEdit({ ...task, title: trimmedValue });
+      setIsEditing(false);
+      break;
+    }
+    default:
+      break;
+  }
+},
     handleToggleCompleted: () => {
-      const { task } = this.props;
-      this.#actions.editTask({ completed: !task.completed });
+      clearInterval(task.interval);
+      onTaskEdit({ ...task, completed: !task.completed, timeRemaining: 0, interval: null });
     },
-
     handleEditClick: () => {
-      const { task } = this.props;
-      const { isEditing } = this.state;
       if (isEditing || task.completed) return;
-
-      this.#actions.setEditModeTo(true);
+      setIsEditing(true);
     },
-
     handleDeleteClick: () => {
-      const { onTaskDelete, task } = this.props;
-      return onTaskDelete(task);
+      onTaskDelete(task);
     },
   };
 
-  constructor(props) {
-    super(props);
-    this.#created = props.task.created;
-    this.state = {
-      isEditing: false, // режим редактирования
-      createdFormattedDate: formatDistanceToNow(this.#created), // форматированное время создания
-    };
-  }
-
-  // #region Обновление интервала
-  componentDidMount() {
-    this.#updateInterval = setInterval(this.updateNowTimeCreated, TIME_INTERVAL);
-  }
-
-  componentWillUnmount() {
-    clearInterval(this.#updateInterval);
-  }
-
-  // коллбэк для интервала; обновление времени создания
-  updateNowTimeCreated = () => {
-    this.setState({ createdFormattedDate: formatDistanceToNow(this.#created) });
+useEffect(() => {
+  const updateCreationTime = () => {
+    setCreationTimeFormatted(formatDistanceToNow(task.created));
   };
 
-  // #endregion
+  const interval = setInterval(updateCreationTime, CREATION_TIME_UPDATE_INTERVAL);
+  return () => clearInterval(interval);
+}, [task.created]);
 
-  render() {
-    const {
-      task: { title, completed },
-    } = this.props;
-    const { createdFormattedDate, isEditing } = this.state;
-    const {
-      handleTitleChanged, // обработчик изменения заголовка
-      handleToggleCompleted, // обработчик изменения статуса задачи
-      handleEditClick, // обработчик редактирования задачи
-      handleDeleteClick, // обработчик удаления задачи
-    } = this.#handlers;
+  const formattedDuration =
+    task.timeRemaining === 0
+      ? '0 мин 0 сек'
+      : formatDuration({
+          minutes: new Date(0, 0, 0, 0, 0, task.timeRemaining).getMinutes(),
+          seconds: new Date(0, 0, 0, 0, 0, task.timeRemaining).getSeconds(),
+        });
 
-    const inputFormWhenEditingTask = (
-      <input className="edit" type="text" defaultValue={title} onKeyDown={handleTitleChanged} />
-    );
+  const timerControlsAndTime = (
+    <>
+      <button type="button" className="icon icon-play" onClick={() => onTaskStart(task)} />
+      <button type="button" className="icon icon-pause" onClick={() => onTaskStop(task)} />
+      <span>{formattedDuration}</span>
+    </>
+  );
 
-    return (
-      <li className={(completed ? 'completed' : null) || (isEditing ? 'editing' : null)}>
-        <div className="view">
-          <input className="toggle" type="checkbox" onChange={handleToggleCompleted} defaultChecked={completed} />
-          <label onDoubleClick={handleEditClick}>
-            <span className="description">{title}</span>
-            <span className="created">{createdFormattedDate}</span>
-          </label>
-          <button type="button" className="icon icon-destroy" onClick={handleDeleteClick} />
-          <button type="button" className="icon icon-edit" onClick={handleEditClick} />
-        </div>
-        {/* Рендер поля редактирования наименования задачи если задача не завершена */}
-        {isEditing && !completed && inputFormWhenEditingTask}
-      </li>
-    );
-  }
+  const isShowTimerControls = task.timeRemaining && !task.completed && timerControlsAndTime;
+
+  return (
+    <li className={(task.completed ? 'completed' : null) || (isEditing ? 'editing' : null)}>
+      <div className="view">
+        <input
+          className="toggle"
+          type="checkbox"
+          onChange={handlers.handleToggleCompleted}
+          defaultChecked={task.completed}
+        />
+        <label onDoubleClick={handlers.handleEditClick} htmlFor="title">
+          <span id="title" className="title">
+            {task.title}
+          </span>
+          <span className="description">{isShowTimerControls || '0 мин 0 сек'}</span>
+          <span className="description">{creationTimeFormatted}</span>
+        </label>
+        <button type="button" className="icon icon-destroy" onClick={handlers.handleDeleteClick} />
+        <button type="button" className="icon icon-edit" onClick={handlers.handleEditClick} />
+      </div>
+      {/* Рендер поля редактирования наименования задачи если задача не завершена */}
+      {isEditing && !task.completed && (
+        <input
+          className="edit"
+          type="text"
+          defaultValue={task.title}
+          onKeyDown={handlers.handleTitleChanged}
+          onBlur={() => setIsEditing(false)}
+        />
+      )}
+    </li>
+  );
 }
 
 Task.propTypes = {
   onTaskEdit: PropTypes.func.isRequired,
   onTaskDelete: PropTypes.func.isRequired,
+  onTaskStart: PropTypes.func.isRequired,
+  onTaskStop: PropTypes.func.isRequired,
+  tasksTitles: PropTypes.arrayOf(PropTypes.string).isRequired,
   task: PropTypes.shape({
     id: PropTypes.number.isRequired,
     title: PropTypes.string.isRequired,
     completed: PropTypes.bool.isRequired,
     created: PropTypes.number.isRequired,
+    timeRemaining: PropTypes.number.isRequired,
+    interval: PropTypes.number,
   }).isRequired,
 };

@@ -1,90 +1,109 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 import Footer from '../footer';
 import NewTaskForm from '../new-task-form';
 import TaskList from '../task-list';
 import './App.css';
 
-export default class App extends React.Component {
-  #actionsWithData = {
+const TIMER_UPDATE_INTERVAL = 1000;
+
+export default function App() {
+  const [currentFilter, setCurrentFilter] = useState('All');
+  const [tasks, setTasks] = useState([]);
+
+  // Clear all intervals on unmount
+  useEffect(
+    () => () => {
+      tasks.forEach((task) => {
+        if (task.interval) {
+          clearInterval(task.interval);
+        }
+      });
+    },
+    []
+  );
+
+  const actions = {
     add: (task) => {
-      const { tasks } = this.state;
       return [...tasks, task];
     },
     edit: (task) => {
-      const { tasks } = this.state;
       return tasks.map((t) => (t.id === task.id ? task : t));
     },
-    delete: (...tasksToDelete) => {
-      const { tasks } = this.state;
-      return tasks.filter((t) => !tasksToDelete.includes(t));
+    delete: (tasksToDelete) => {
+      const tasksToDeleteArray = Array.isArray(tasksToDelete) ? tasksToDelete : [tasksToDelete];
+      return tasks.filter((t) => !tasksToDeleteArray.includes(t));
+    },
+    start: (task) => {
+      const updateTaskInState = (changedProps) => (tasksInState) => {
+        const updateTaskProps = (currentTask) => {
+          const currentTitle = tasksInState.find((t) => t.id === task.id).title;
+          return { ...currentTask, title: currentTitle, ...changedProps };
+        };
+        const updatedTasks = tasksInState.map((t) => (t.id === task.id ? updateTaskProps(t) : t));
+        return updatedTasks;
+      };
+      if (task.interval || task.timeRemaining === 0) return;
+      let { timeRemaining } = task;
+
+      const interval = setInterval(() => {
+        timeRemaining -= 1;
+        setTasks(updateTaskInState({ timeRemaining, interval }));
+        if (timeRemaining === 0) {
+          clearInterval(interval);
+          setTasks(updateTaskInState({ timeRemaining: 0, interval: null }));
+        }
+      }, TIMER_UPDATE_INTERVAL);
+    },
+    stop: (task) => {
+      if (!task.interval) return;
+      setTasks(actions.edit({ ...task, interval: null }));
+      clearInterval(task.interval);
     },
   };
 
-  #handlers = {
+  const handlers = {
     handleTaskAction: (action) => (task) => {
-      if (!this.#actionsWithData[action]) {
+      if (!actions[action]) {
         throw new Error(`Unknown action: ${action}`);
       }
-      this.setState({ tasks: this.#actionsWithData[action](task) });
+      const changedTasks = actions[action](task);
+      if (action === 'start' || action === 'stop') return;
+      setTasks(changedTasks);
     },
     handleFilterChange: (filter) => () => {
-      const { currentFilter } = this.state;
       if (filter === currentFilter) return;
-      this.setState({ currentFilter: filter });
+      setCurrentFilter(filter);
     },
     handleClearCompleted: () => {
-      const { tasks } = this.state;
-      this.#handlers.handleTaskAction('delete')(...tasks.filter((t) => t.completed));
+      handlers.handleTaskAction('delete')(tasks.filter((t) => t.completed));
     },
   };
 
-  constructor(props) {
-    super(props);
-    this.state = {
-      currentFilter: 'All',
-      tasks: [
-        {
-          id: 1,
-          created: Date.parse('2025-05-05'),
-          title: 'Task 1',
-          completed: false,
-        },
-        {
-          id: 2,
-          created: Date.parse('2025-05-06'),
-          title: 'Task 2',
-          completed: true,
-        },
-      ],
-    };
-  }
+  const { handleTaskAction, handleFilterChange, handleClearCompleted } = handlers;
+  const lastIdx = tasks.length > 0 ? Math.max(...tasks.map((t) => t.id)) : 0;
+  const tasksTitles = tasks.map((t) => t.title);
+  const activeTasksCount = tasks.filter((t) => !t.completed).length;
 
-  render() {
-    const { currentFilter, tasks } = this.state;
-    const { handleTaskAction, handleFilterChange, handleClearCompleted } = this.#handlers;
-
-    const lastIdx = tasks.length > 0 ? Math.max(...tasks.map((t) => t.id)) : 0;
-    const activeTasksCount = tasks.filter((t) => !t.completed).length;
-
-    return (
-      <section className="todoapp">
-        <NewTaskForm onNewTask={handleTaskAction('add')} lastIdx={lastIdx} />
-        <section className="main">
-          <TaskList
-            tasks={tasks}
-            onTaskEdit={handleTaskAction('edit')}
-            onTaskDelete={handleTaskAction('delete')}
-            currentFilter={currentFilter}
-          />
-          <Footer
-            todo={activeTasksCount}
-            currentFilter={currentFilter}
-            handleFilterChange={handleFilterChange}
-            handleClearCompleted={handleClearCompleted}
-          />
-        </section>
+  return (
+    <section className="todoapp">
+      <NewTaskForm onNewTask={handleTaskAction('add')} lastIdx={lastIdx} tasksTitles={tasksTitles} />
+      <section className="main">
+        <TaskList
+          tasks={tasks}
+          onTaskEdit={handleTaskAction('edit')}
+          onTaskDelete={handleTaskAction('delete')}
+          onTaskStart={handleTaskAction('start')}
+          onTaskStop={handleTaskAction('stop')}
+          currentFilter={currentFilter}
+        />
+        <Footer
+          todo={activeTasksCount}
+          currentFilter={currentFilter}
+          handleFilterChange={handleFilterChange}
+          handleClearCompleted={handleClearCompleted}
+        />
       </section>
-    );
-  }
+    </section>
+  );
 }
